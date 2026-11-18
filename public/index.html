@@ -5,82 +5,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore a three-level retail dashboard, investigate a segment and take reviewed actions from real data."
+      content="Northstar Retail operations briefing: read the overview, drill into a segment, inspect an order and take reviewed actions from the data in view."
     />
     <meta name="color-scheme" content="light" />
-    <title>Northstar · Action Lab</title>
+    <title>Northstar Retail · Operations briefing</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./app.js" defer></script>
   </head>
   <body class="dashboard-app">
     <a class="skip-link" href="#main">Skip to dashboard</a>
     <header class="topbar">
-      <a
-        class="brand"
-        href="./index.html"
-        aria-label="Northstar Action Lab home"
-        ><span class="brand-symbol" aria-hidden="true">✳︎</span
-        ><span
-          >northstar<span class="brand-divider">/</span
-          ><span class="brand-lab">action lab</span></span
-        ></a
-      >
-      <p class="sidebar-section-label">Retail operations</p>
-      <nav class="top-nav" aria-label="Main navigation">
-        <button id="nav-overview" type="button" aria-current="page">
-          Overview
-        </button>
-        <button id="nav-segment" type="button">Segments</button>
-        <button id="nav-record" type="button">Record</button>
-        <a href="#history"
-          >Activity <span id="nav-count" class="nav-count">0</span></a
+      <div class="topbar-inner">
+        <a
+          class="brand"
+          href="./index.html"
+          aria-label="Northstar Retail operations briefing home"
         >
-        <a href="./start-here.html">Guide ↗</a>
-      </nav>
-      <a
-        class="button copy-button"
-        href="https://github.com/josncmar/ie-apps-action-lab"
-        target="_blank"
-        rel="noopener noreferrer"
-        >Get your own copy ↗</a
-      >
-    </header>
-    <main id="main" class="page-shell dashboard-shell">
-      <section class="lab-toolbar" aria-label="Data and connection settings">
-        <div class="data-status">
-          <span class="status-dot"></span
-          ><span id="data-status" role="status"
-            >Loading 24 synthetic orders…</span
+          <svg
+            class="brand-mark"
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            aria-hidden="true"
           >
-        </div>
-        <details id="connection-settings">
-          <summary>Connections &amp; lab access</summary>
-          <div class="toolbar-fields">
-            <label for="lab-access"
-              >Lab access phrase<input
-                id="lab-access"
-                type="password"
-                autocomplete="off"
-                placeholder="For configured service calls" /></label
-            ><button
-              id="refresh-data"
-              class="button secondary small"
-              type="button"
-            >
-              Refresh data &amp; connections ↻</button
-            ><button id="clear-access" class="quiet-button" type="button">
-              Clear phrase
+            <path
+              d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z"
+            />
+          </svg>
+          <span class="brand-text"
+            ><span class="brand-name">Northstar Retail</span
+            ><span class="brand-lab">Operations briefing</span></span
+          >
+        </a>
+        <nav class="top-nav" aria-label="Main navigation">
+          <div class="level-steps" role="group" aria-label="Analysis levels">
+            <button id="nav-overview" type="button" aria-current="page">
+              <span class="step-index" aria-hidden="true">1</span
+              ><span class="step-label">Overview</span>
+            </button>
+            <span class="step-arrow" aria-hidden="true">›</span>
+            <button id="nav-segment" type="button">
+              <span class="step-index" aria-hidden="true">2</span
+              ><span class="step-label">Segments</span>
+            </button>
+            <span class="step-arrow" aria-hidden="true">›</span>
+            <button id="nav-record" type="button">
+              <span class="step-index" aria-hidden="true">3</span
+              ><span class="step-label">Record</span>
             </button>
           </div>
-          <p class="small muted">
-            The phrase stays in memory. Provider keys belong on the server. You
-            can always try an action; missing settings return a clear error.
-          </p>
-          <p id="connection-status" class="small muted" role="status">
-            No connection check has completed.
-          </p>
+          <div class="nav-links">
+            <a href="#history"
+              >Activity <span id="nav-count" class="nav-count">0</span></a
+            >
+            <a href="./start-here.html">Guide ↗</a>
+          </div>
+        </nav>
+        <details id="connection-settings" class="connections">
+          <summary>
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="connections-label">Connections<span class="connections-label-rest"> &amp; lab access</span></span>
+            <span
+              id="connection-count"
+              class="connections-count"
+              aria-label="Configured connections"
+              >–/4</span
+            >
+          </summary>
+          <div class="connections-panel">
+            <p class="connections-title">Where confirmed actions go</p>
+            <ul id="connection-list" class="connection-list"></ul>
+            <p id="connection-status" class="small muted" role="status">
+              No connection check has completed.
+            </p>
+            <div class="toolbar-fields">
+              <label for="lab-access"
+                >Lab access phrase<input
+                  id="lab-access"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="For configured service calls"
+              /></label>
+              <div class="toolbar-buttons">
+                <button
+                  id="refresh-data"
+                  class="button secondary small"
+                  type="button"
+                >
+                  Refresh data &amp; connections ↻
+                </button>
+                <button id="clear-access" class="quiet-button" type="button">
+                  Clear phrase
+                </button>
+              </div>
+            </div>
+            <p class="small muted">
+              The phrase stays in memory. Provider keys belong on the server.
+              You can always try an action; missing settings return a clear
+              error.
+            </p>
+          </div>
         </details>
-      </section>
+      </div>
+    </header>
+    <main id="main" class="page-shell dashboard-shell">
       <nav
         id="breadcrumbs"
         class="breadcrumbs"
@@ -89,100 +117,140 @@
       <div id="load-error" class="load-error" role="alert" hidden></div>
       <section id="overview" class="overview" aria-labelledby="view-title">
         <div class="section-heading">
-          <div>
-            <p id="view-level" class="eyebrow">LEVEL 01 · OVERVIEW</p>
-            <h2 id="view-title" tabindex="-1">Operations overview</h2>
+          <div class="heading-main">
+            <p id="view-level" class="eyebrow">Level 1 of 3 · Overview</p>
+            <h1 id="view-title" tabindex="-1">Operations overview</h1>
           </div>
-          <div class="date-chip">
-            Snapshot
-            <time id="snapshot-date" datetime="2026-11-17">17 Nov 2026</time>
-          </div>
-        </div>
-        <div class="scope-toolbar">
-          <div>
-            <p id="scope-summary">All 24 orders</p>
-            <div id="scope-chips" class="scope-chips"></div>
-          </div>
-          <div class="scope-actions">
+          <div class="heading-side">
+            <div class="data-line">
+              <span class="date-chip"
+                >Snapshot
+                <time id="snapshot-date" datetime="2026-11-17"
+                  >17 Nov 2026</time
+                ></span
+              >
+              <span class="data-status"
+                ><span class="status-dot" aria-hidden="true"></span
+                ><span id="data-status" role="status"
+                  >Loading 24 synthetic orders…</span
+                ></span
+              >
+            </div>
             <button id="download-csv" class="button secondary" type="button">
               Download CSV ↓
             </button>
           </div>
         </div>
-        <div id="global-filters" class="filters global-filters">
-          <label class="search-field"
-            ><span class="sr-only">Search orders</span
-            ><span aria-hidden="true">⌕</span
-            ><input
-              id="search"
-              type="search"
-              placeholder="Search order, product or team…"
-              autocomplete="off" /></label
-          ><label class="filter-field"
-            ><span class="sr-only">Filter by signal</span
-            ><select id="signal-filter">
-              <option value="all">All signals</option>
-              <option value="attention">Needs attention</option>
-              <option value="negative">Negative contribution</option>
-              <option value="late">Late delivery</option>
-              <option value="refund">High refund</option>
-              <option value="clear">No signals</option>
-            </select></label
-          ><label class="filter-field"
-            ><span class="sr-only">Filter by delivery status</span
-            ><select id="status-filter">
-              <option value="all">All statuses</option>
-              <option value="delivered">Delivered</option>
-              <option value="in_transit">In transit</option>
-              <option value="processing">Processing</option>
-            </select></label
-          ><button id="clear-filters" class="quiet-button" type="button">
-            Reset filters
-          </button>
+        <div class="scope-bar">
+          <div class="scope-readout">
+            <span class="scope-tag">Scope</span>
+            <p id="scope-summary">All 24 orders</p>
+            <div id="scope-chips" class="scope-chips"></div>
+          </div>
+          <div id="global-filters" class="filters global-filters">
+            <label class="search-field"
+              ><span class="sr-only">Search orders</span
+              ><span class="search-icon" aria-hidden="true">⌕</span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Search order, product or team…"
+                autocomplete="off" /></label
+            ><label class="filter-field"
+              ><span class="sr-only">Filter by signal</span
+              ><select id="signal-filter">
+                <option value="all">All signals</option>
+                <option value="attention">Needs attention</option>
+                <option value="negative">Negative contribution</option>
+                <option value="late">Late delivery</option>
+                <option value="refund">High refund</option>
+                <option value="clear">No signals</option>
+              </select></label
+            ><label class="filter-field"
+              ><span class="sr-only">Filter by delivery status</span
+              ><select id="status-filter">
+                <option value="all">All statuses</option>
+                <option value="delivered">Delivered</option>
+                <option value="in_transit">In transit</option>
+                <option value="processing">Processing</option>
+              </select></label
+            ><button id="clear-filters" class="quiet-button" type="button">
+              Reset filters
+            </button>
+          </div>
         </div>
         <div id="metrics" class="metrics" aria-live="polite">
           <article class="metric">
-            <p>Net revenue</p>
-            <strong id="metric-revenue">—</strong
-            ><span>Sales less refunds</span>
+            <p class="metric-label">Net revenue</p>
+            <strong id="metric-revenue">—</strong>
+            <span class="metric-note">Revenue − refunds</span>
+            <span class="metric-cue" aria-hidden="true">Actions ⋯</span>
           </article>
           <article class="metric">
-            <p>Contribution</p>
-            <strong id="metric-profit">—</strong
-            ><span>Net revenue less product cost</span>
+            <p class="metric-label">Contribution</p>
+            <strong id="metric-profit">—</strong>
+            <span class="metric-note"
+              >Net revenue − product cost ·
+              <span id="metric-margin" class="metric-figure">—</span></span
+            >
+            <span class="metric-cue" aria-hidden="true">Actions ⋯</span>
           </article>
           <article class="metric">
-            <p>Orders in view</p>
-            <strong id="metric-orders">—</strong
-            ><span id="metric-order-note">All channels and regions</span>
+            <p class="metric-label">Orders in view</p>
+            <strong id="metric-orders">—</strong>
+            <span id="metric-order-note" class="metric-note"
+              >All channels and regions</span
+            >
+            <span class="metric-cue" aria-hidden="true">Actions ⋯</span>
           </article>
           <article class="metric metric-attention">
-            <p>Need a closer look ↗</p>
-            <strong id="metric-attention">—</strong
-            ><span>Orders with at least one signal</span>
+            <p class="metric-label">Need a closer look</p>
+            <strong id="metric-attention">—</strong>
+            <span class="metric-meter" aria-hidden="true"
+              ><span id="metric-attention-meter"></span
+            ></span>
+            <span id="metric-attention-note" class="metric-note"
+              >Orders with at least one signal</span
+            >
+            <span class="metric-cue" aria-hidden="true">Actions ⋯</span>
           </article>
         </div>
         <div id="overview-view">
-          <aside
-            class="segment-banner insight-callout"
-            aria-label="A record worth investigating"
-          >
-            <div>
-              <h3 id="case-title">Follow the margin signal</h3>
-              <p id="case-summary">
-                Explore the Northeast / Workspace segment and inspect NS-1041.
-              </p>
+          <section class="panel signal-panel" aria-labelledby="signals-title">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Where to look</p>
+                <h2 id="signals-title">Signals worth investigating</h2>
+              </div>
+              <span class="chart-unit">Select a signal · actions ⋯</span>
             </div>
-            <button id="explore-case" class="button secondary" type="button">
-              Investigate this segment →
-            </button>
-          </aside>
+            <div class="signal-layout">
+              <div id="signal-chart" class="signal-chart"></div>
+              <aside
+                class="insight-callout"
+                aria-label="A record worth investigating"
+              >
+                <p class="callout-kicker">Suggested starting point</p>
+                <h3 id="case-title">Follow the margin signal</h3>
+                <p id="case-summary">
+                  Explore the Northeast / Workspace segment and inspect NS-1041.
+                </p>
+                <button id="explore-case" class="button primary" type="button">
+                  Investigate this segment →
+                </button>
+              </aside>
+            </div>
+            <p class="chart-note">
+              A flag is a reason to investigate, not a conclusion. An order can
+              carry more than one signal; totals count each order once.
+            </p>
+          </section>
           <div class="chart-grid">
             <section class="panel revenue-panel" aria-labelledby="region-title">
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">DRILL INTO A REGION</p>
-                  <h3 id="region-title">Net revenue by region</h3>
+                  <p class="eyebrow">Drill into a region</p>
+                  <h2 id="region-title">Net revenue by region</h2>
                 </div>
                 <span class="chart-unit">Select a bar · actions ⋯</span>
               </div>
@@ -198,8 +266,8 @@
             >
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">DRILL INTO A CATEGORY</p>
-                  <h3 id="category-title">Contribution by category</h3>
+                  <p class="eyebrow">Drill into a category</p>
+                  <h2 id="category-title">Contribution by category</h2>
                 </div>
                 <span class="chart-unit">Select a bar · actions ⋯</span>
               </div>
@@ -210,20 +278,6 @@
               ></div>
             </section>
           </div>
-          <section class="panel signal-panel" aria-labelledby="signals-title">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">WHERE TO LOOK</p>
-                <h3 id="signals-title">Signals worth investigating</h3>
-              </div>
-              <span class="signal-symbol" aria-hidden="true">↗︎</span>
-            </div>
-            <div id="signal-chart" class="signal-chart"></div>
-            <p class="chart-note">
-              A flag is a reason to investigate, not a conclusion. Click a
-              signal to explore the underlying records.
-            </p>
-          </section>
         </div>
       </section>
       <section
@@ -233,17 +287,14 @@
       >
         <div id="segment-view" hidden>
           <section class="segment-banner" aria-labelledby="segment-title">
-            <div>
-              <p class="eyebrow">LEVEL 02 · DIAGNOSIS</p>
-              <h3 id="segment-title">Selected segment</h3>
-              <p id="segment-description"></p>
-            </div>
+            <h2 id="segment-title" class="sr-only">Selected segment</h2>
+            <p id="segment-description"></p>
           </section>
           <section class="panel revenue-panel">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">NARROW THE QUESTION</p>
-                <h3 id="segment-chart-title">Segment breakdown</h3>
+                <p class="eyebrow">Narrow the question</p>
+                <h2 id="segment-chart-title">Segment breakdown</h2>
               </div>
               <span class="chart-unit">Select a bar · actions ⋯</span>
             </div>
@@ -254,12 +305,13 @@
         <div id="orders-panel" class="panel orders-panel">
           <div class="panel-heading">
             <div>
+              <p id="orders-eyebrow" class="eyebrow">Evidence</p>
               <h2 id="orders-title">Order explorer</h2>
             </div>
             <span id="order-count" class="count-pill">24 orders</span>
           </div>
           <div class="table-scroll">
-            <table>
+            <table class="orders-table">
               <caption class="sr-only">
                 Choose an order ID or its Details button to inspect source
                 values and contextual actions.
@@ -267,8 +319,10 @@
               <thead>
                 <tr>
                   <th scope="col">Order / product</th>
-                  <th scope="col">Net sales</th>
-                  <th scope="col">Margin</th>
+                  <th scope="col" class="col-segment">Segment</th>
+                  <th scope="col" class="num col-net">Net sales</th>
+                  <th scope="col" class="num">Contribution</th>
+                  <th scope="col" class="num col-margin">Margin</th>
                   <th scope="col">Signal</th>
                   <th scope="col"><span class="sr-only">Details</span></th>
                 </tr>
@@ -284,7 +338,7 @@
           <div class="table-footer">
             <span id="table-scope-note"
               >24 fictional source records. No customer data.</span
-            ><span>Click a row or use its Details button →</span>
+            ><span>Click a row for details · ⋯ for actions</span>
           </div>
         </div>
         <aside
@@ -296,13 +350,13 @@
       </section>
       <details id="history" class="panel history-panel">
         <summary class="history-summary">
-          <span>Action activity</span
+          <span class="history-summary-title">Action activity</span
           ><span id="history-summary-count">No actions yet</span>
         </summary>
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">CLOSE THE LOOP</p>
-            <h2 id="history-title">Action activity</h2>
+            <p class="eyebrow">Close the loop</p>
+            <h2 id="history-title">Requests and evidence</h2>
             <p class="panel-description">
               Requests and verification evidence are saved in this browser.
             </p>
@@ -335,11 +389,21 @@
       </details>
       <footer class="page-footer">
         <p>
-          <strong>Northstar</strong> is fictional. All 24 records are synthetic.
+          <strong>Northstar Retail</strong> is fictional. All 24 records are
+          synthetic.
         </p>
-        <a href="https://ie-lessons-tracker.vercel.app/course/3"
-          >Submit your work in the course portal ↗</a
-        >
+        <div class="footer-links">
+          <a href="https://ie-lessons-tracker.vercel.app/course/3"
+            >Submit your work in the course portal ↗</a
+          >
+          <a
+            class="copy-button"
+            href="https://github.com/josncmar/ie-apps-action-lab"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Get your own copy ↗</a
+          >
+        </div>
       </footer>
     </main>
     <dialog
@@ -347,10 +411,10 @@
       aria-labelledby="dialog-title"
       aria-describedby="dialog-description"
     >
-      <form id="action-form">
+      <form id="action-form" data-stage="edit">
         <div class="dialog-header">
           <div class="dialog-heading-labels">
-            <p class="eyebrow">REVIEW BEFORE YOU ACT</p>
+            <p class="eyebrow">Review before you act</p>
             <div id="dialog-service"></div>
           </div>
           <button
@@ -364,7 +428,20 @@
         </div>
         <h2 id="dialog-title">Review this action</h2>
         <p id="dialog-description"></p>
-        <div id="review-context" class="review-context"></div>
+        <ol id="dialog-steps" class="dialog-steps" aria-label="Review steps">
+          <li data-step="edit">
+            <span class="step-index" aria-hidden="true">1</span
+            ><span id="dialog-step-edit">Edit draft</span>
+          </li>
+          <li data-step="review">
+            <span class="step-index" aria-hidden="true">2</span
+            ><span>Review &amp; confirm</span>
+          </li>
+        </ol>
+        <div class="review-scope">
+          <span class="scope-tag">Scope</span>
+          <div id="review-context" class="review-context"></div>
+        </div>
         <div id="action-fields">
           <label id="recipient-field" class="form-field" hidden
             >Recipient email<input
@@ -387,7 +464,7 @@
               required
               minlength="10"
               maxlength="8000"
-              rows="5"
+              rows="7"
             ></textarea>
           </label>
           <label id="dialog-access-field" class="form-field"
@@ -420,7 +497,7 @@
           </div>
         </div>
         <section id="exact-preview" class="exact-preview" hidden>
-          <p class="eyebrow">EXACT ACTION PREVIEW</p>
+          <p class="eyebrow">Exact action preview</p>
           <h3 id="preview-title"></h3>
           <p id="preview-destination" class="preview-destination"></p>
           <pre id="preview-body"></pre>
@@ -468,6 +545,7 @@
       aria-label="Actions for the selected data"
       hidden
     ></div>
+    <div id="chart-tooltip" class="chart-tooltip" role="tooltip" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

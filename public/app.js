@@ -88,6 +88,72 @@
   function text(selector, value) {
     $(selector).textContent = String(value ?? "");
   }
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  // Status icons travel with every signal label, so colour never works alone.
+  const ICONS = {
+    negative: ["M2 4.5l4.5 4.5 2.5-2.5 5 5", "M10 11.5h4v-4"],
+    late: ["M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2z", "M8 4.8V8l2.3 1.4"],
+    refund: ["M5.5 4.5 3 7l2.5 2.5", "M3 7h6.5a3.25 3.25 0 0 1 0 6.5H7"],
+    attention: ["M8 2.5 14 13H2z", "M8 6.6v2.9", "M8 11.3v.2"],
+    clear: ["M3.5 8.5l3 3 6-6.5"],
+  };
+  function icon(name) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", "icon");
+    for (const d of ICONS[name] || []) {
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", d);
+      svg.append(path);
+    }
+    return svg;
+  }
+  function signalChip(signal) {
+    const chip = node("span", `signal-chip ${signal}`);
+    chip.append(icon(signal));
+    return chip;
+  }
+  function percent(part, whole, digits = 0) {
+    return whole > 0 ? `${((part / whole) * 100).toFixed(digits)}%` : "—";
+  }
+  function hideTip() {
+    $("#chart-tooltip").hidden = true;
+  }
+  /* One shared tooltip: the value leads, context follows. Every figure it shows
+   * is also printed on the chart or in the table, so hover never gates a value. */
+  function showTip(target, content, point) {
+    if (state.menu || state.pending) return;
+    const tip = $("#chart-tooltip");
+    tip.replaceChildren(
+      node("strong", "tip-value", content.value),
+      node("span", "tip-title", content.title),
+    );
+    const rows = node("dl", "tip-rows");
+    for (const [label, value] of content.rows) {
+      rows.append(node("dt", "", label), node("dd", "", value));
+    }
+    tip.append(rows, node("span", "tip-hint", "Select for actions"));
+    tip.hidden = false;
+    const rect = target.getBoundingClientRect();
+    const x = point?.x ?? rect.left + rect.width / 2,
+      y = point?.y ?? rect.bottom;
+    const width = tip.offsetWidth,
+      height = tip.offsetHeight;
+    tip.style.left = `${Math.max(8, Math.min(x + 14, window.innerWidth - width - 8))}px`;
+    tip.style.top = `${y + 18 + height > window.innerHeight ? Math.max(8, y - height - 12) : y + 18}px`;
+  }
+  function bindTip(target, build) {
+    target.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch") return;
+      showTip(target, build(), { x: event.clientX, y: event.clientY });
+    });
+    target.addEventListener("pointerleave", hideTip);
+    target.addEventListener("focus", () => {
+      if (target.matches(":focus-visible")) showTip(target, build());
+    });
+    target.addEventListener("blur", hideTip);
+  }
   function serviceBadge(action) {
     const service = SERVICES[action];
     const badge = node("span", "service-badge");
@@ -251,6 +317,7 @@
   function openContext(selection, trigger, point) {
     if (state.pending || state.submitting) return;
     closeContext(false);
+    hideTip();
     const menu = $("#context-menu"),
       frozen = freezeSelection(selection);
     const totals = metrics(ordersForScope(frozen.scope));
@@ -279,7 +346,7 @@
           ["github", "Report data issue", "GitHub · source follow-up"],
         ]
       : [
-          ["explore", "Explore segment", "Open the records behind this value"],
+          ["explore", "Explore segment", "See the records behind it"],
           ["email", "Share finding", "Email · editable message"],
           [
             "trello",
@@ -365,11 +432,12 @@
     return state.orders.find((order) => order.id === state.selectedId);
   }
   function statusBadge(signal) {
-    return node(
-      "span",
-      `signal-badge ${signal || ""}`,
-      signal ? SIGNALS[signal].short : "No signals",
+    const badge = node("span", `signal-badge ${signal || "clear"}`);
+    if (signal) badge.append(signalChip(signal));
+    badge.append(
+      node("span", "", signal ? SIGNALS[signal].short : "No signals"),
     );
+    return badge;
   }
   function notify(message) {
     window.clearTimeout(toastTimer);
@@ -481,6 +549,7 @@
         "#connection-status",
         `${names.length} of 4 connections configured. Every action can be tried; the server reports missing settings. ${state.database.message || ""}`,
       );
+      renderConnections();
       $("#load-error").hidden = true;
       render();
       return true;
@@ -529,6 +598,47 @@
       (action === "supabase" ? state.integrations.supa : undefined)
     );
   }
+  /* Setting names are not secrets: listing the missing ones tells the owner
+   * exactly what to add on the server. Values never reach the browser. */
+  function renderConnections() {
+    const list = $("#connection-list");
+    list.replaceChildren();
+    let configured = 0;
+    for (const key of ["email", "trello", "supabase", "github"]) {
+      const details = integration(key) || {};
+      const ready = Boolean(details.configured);
+      if (ready) configured += 1;
+      const missing = Array.isArray(details.missing)
+        ? details.missing.filter(
+            (value) =>
+              typeof value === "string" && /^[A-Z][A-Z0-9_]+$/.test(value),
+          )
+        : [];
+      const item = node("li", "connection-item");
+      item.dataset.state = ready ? "configured" : "missing";
+      const copy = node("div", "connection-copy");
+      copy.append(
+        serviceBadge(key),
+        node(
+          "span",
+          "connection-detail",
+          ready
+            ? "Ready for confirmed actions"
+            : missing.length
+              ? `Add ${missing.join(", ")}`
+              : "Check this server setting",
+        ),
+      );
+      item.append(
+        copy,
+        node("span", "connection-state", ready ? "Configured" : "Not set"),
+      );
+      list.append(item);
+    }
+    text("#connection-count", `${configured}/4`);
+    $("#connection-settings").dataset.state =
+      configured === 4 ? "ready" : configured ? "partial" : "none";
+  }
 
   function renderBreadcrumbs() {
     const nav = $("#breadcrumbs");
@@ -536,17 +646,17 @@
     const overview = node(
       "button",
       state.level === "overview" ? "current" : "",
-      "01 · Overview",
+      "Overview",
     );
     overview.type = "button";
     overview.addEventListener("click", goOverview);
     nav.append(overview);
     if (state.level !== "overview") {
-      nav.append(node("span", "breadcrumb-separator", "/"));
+      nav.append(node("span", "breadcrumb-separator", "›"));
       const segment = node(
         "button",
         state.level === "segment" ? "current" : "",
-        `02 · ${scopeLabel()}`,
+        scopeLabel(),
       );
       segment.type = "button";
       segment.addEventListener("click", () => {
@@ -559,8 +669,8 @@
     }
     if (state.level === "record") {
       nav.append(
-        node("span", "breadcrumb-separator", "/"),
-        node("span", "current", `03 · ${state.selectedId}`),
+        node("span", "breadcrumb-separator", "›"),
+        node("span", "current", state.selectedId),
       );
     }
     nav.querySelector(".current")?.setAttribute("aria-current", "page");
@@ -609,9 +719,27 @@
     }
     text("#metric-revenue", money.format(totals.netRevenue));
     text("#metric-profit", money.format(totals.profit));
-    text("#metric-orders", String(totals.count).padStart(2, "0"));
-    text("#metric-attention", String(totals.attention).padStart(2, "0"));
-    text("#metric-order-note", `${state.orders.length} total · current scope`);
+    text("#metric-orders", totals.count);
+    text("#metric-attention", totals.attention);
+    text(
+      "#metric-margin",
+      totals.netRevenue > 0
+        ? `${percent(totals.profit, totals.netRevenue, 1)} margin`
+        : "margin not defined",
+    );
+    text(
+      "#metric-order-note",
+      `of ${state.orders.length} in the dataset · current scope`,
+    );
+    text(
+      "#metric-attention-note",
+      totals.count
+        ? `${percent(totals.attention, totals.count)} of orders in view · at least one signal`
+        : "No orders in view",
+    );
+    $("#metric-attention-meter").style.width = totals.count
+      ? `${(totals.attention / totals.count) * 100}%`
+      : "0%";
     text(
       "#scope-summary",
       state.level === "record"
@@ -621,7 +749,18 @@
     const chips = $("#scope-chips");
     chips.replaceChildren();
     Object.entries(currentScope()).forEach(([key, value]) => {
-      const button = node("button", "scope-chip", `${key}: ${value} ×`);
+      const shown =
+        key === "status"
+          ? describeStatus(value)
+          : key === "signal"
+            ? scopeLabel({ signal: value })
+            : value;
+      const button = node("button", "scope-chip");
+      button.append(
+        node("span", "scope-chip-key", key),
+        node("span", "", shown),
+        node("span", "scope-chip-remove", "×"),
+      );
       button.type = "button";
       button.setAttribute("aria-label", `Remove ${key} filter ${value}`);
       button.addEventListener("click", () => {
@@ -633,38 +772,70 @@
     });
   }
   function renderBreakdown(selector, orders, field, measure) {
-    const values = [...new Set(orders.map((order) => order[field]))].sort();
-    const totals = values.map((value) => ({
-      value,
-      total: orders
-        .filter((order) => order[field] === value)
-        .reduce(
-          (sum, order) =>
-            sum + (measure === "profit" ? profit(order) : net(order)),
-          0,
-        ),
-    }));
-    const max = Math.max(1, ...totals.map((item) => Math.abs(item.total)));
+    const isProfit = measure === "profit";
+    const measureName = isProfit ? "Contribution" : "Net revenue";
+    // Ranked largest first; every bar shares one zero baseline so a loss
+    // reads as a bar on the other side of the line, never as a shorter gain.
+    const totals = [...new Set(orders.map((order) => order[field]))]
+      .map((value) => {
+        const group = orders.filter((order) => order[field] === value);
+        const netTotal = group.reduce((sum, order) => sum + net(order), 0),
+          profitTotal = group.reduce((sum, order) => sum + profit(order), 0);
+        return {
+          value,
+          count: group.length,
+          netTotal,
+          profitTotal,
+          total: isProfit ? profitTotal : netTotal,
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.value.localeCompare(b.value));
+    const low = Math.min(0, ...totals.map((item) => item.total)),
+      high = Math.max(0, ...totals.map((item) => item.total));
+    const span = high - low || 1,
+      zero = (-low / span) * 100;
     $(selector).replaceChildren(
-      ...totals.map(({ value, total }) => {
+      ...totals.map(({ value, total, count, netTotal, profitTotal }) => {
         const button = node("button", "region-row");
         button.type = "button";
         button.dataset.dimension = field;
         button.dataset.value = value;
         button.setAttribute(
           "aria-label",
-          `Select ${field} ${value}: ${money.format(total)}. Open finding actions.`,
+          `Select ${field} ${value}: ${money.format(total)} ${measureName.toLowerCase()}, ${count} ${count === 1 ? "order" : "orders"}. Open finding actions.`,
         );
         const track = node("span", "bar-track"),
           fill = node("span", `bar-fill${total < 0 ? " negative" : ""}`);
         track.setAttribute("aria-hidden", "true");
-        fill.style.width = `${Math.max(2, (Math.abs(total) / max) * 100)}%`;
+        track.style.setProperty("--zero", `${zero}%`);
+        const width = total ? Math.max(1, (Math.abs(total) / span) * 100) : 0;
+        fill.style.width = `${width}%`;
+        fill.style.left = `${total < 0 ? zero - width : zero}%`;
         track.append(fill);
+        const label = node("span", "region-label");
+        label.append(
+          node("span", "region-name", value),
+          node(
+            "span",
+            "region-count",
+            `${count} ${count === 1 ? "order" : "orders"}`,
+          ),
+        );
         button.append(
-          node("span", "region-label", value),
+          label,
           track,
           node("span", "region-value", money.format(total)),
         );
+        bindTip(button, () => ({
+          value: money.format(total),
+          title: `${measureName} · ${value}`,
+          rows: [
+            ["Net revenue", money.format(netTotal)],
+            ["Contribution", money.format(profitTotal)],
+            ["Margin", percent(profitTotal, netTotal, 1)],
+            ["Orders", String(count)],
+          ],
+        }));
         bindContextTrigger(button, () => ({
           kind: "bar",
           label: `${measure === "profit" ? "Contribution" : "Net revenue"} · ${value}`,
@@ -701,9 +872,21 @@
           "aria-label",
           `${signal.label}: ${count} orders. Investigate this signal.`,
         );
+        const copy = node("span", "signal-copy");
+        copy.append(
+          node("span", "signal-name", signal.label),
+          node(
+            "span",
+            "signal-share",
+            orders.length
+              ? `${percent(count, orders.length)} of orders in view`
+              : "No orders in view",
+          ),
+        );
         button.append(
-          node("span", "", signal.label),
-          node("strong", "", String(count).padStart(2, "0")),
+          signalChip(key),
+          copy,
+          node("strong", "", String(count)),
         );
         bindContextTrigger(button, () => ({
           kind: "signal",
@@ -766,12 +949,21 @@
         more.setAttribute("aria-label", `Open finding actions for ${order.id}`);
         bindContextTrigger(more, () => recordSelection(order));
         detailsCell.append(details, more);
+        const segment = node("td", "col-segment");
+        segment.append(
+          node("span", "segment-main", `${order.region} · ${order.category}`),
+          node("span", "segment-sub", order.channel),
+        );
+        const negative = profit(order) < 0 ? " margin-negative" : "";
+        detailsCell.className = "row-actions";
         row.append(
           identity,
-          node("td", "money-cell", money.format(net(order))),
+          segment,
+          node("td", "money-cell col-net", money.format(net(order))),
+          node("td", `money-cell${negative}`, money.format(profit(order))),
           node(
             "td",
-            `money-cell ${profit(order) < 0 ? "margin-negative" : ""}`,
+            `money-cell col-margin${negative}`,
             value === null ? "—" : `${(value * 100).toFixed(1)}%`,
           ),
           flagCell,
@@ -879,30 +1071,40 @@
     detail.replaceChildren();
     detail.hidden = state.level !== "record" || !order;
     if (detail.hidden) return;
-    const top = node("div", "detail-top");
-    top.append(
-      node("span", "detail-kicker", "LEVEL 03 · SOURCE RECORD"),
-      node("span", "detail-status", describeStatus(order.status)),
-    );
+    const flags = signals(order);
+
+    // Header: identity, signals and the record-level actions menu.
+    const header = node("header", "detail-header"),
+      identity = node("div", "detail-identity");
     const heading = node("h2", "", order.id);
     heading.id = "record-title";
     heading.tabIndex = -1;
-    const flags = node("div", "detail-flags");
-    (signals(order).length ? signals(order) : [null]).forEach((signal) =>
-      flags.append(statusBadge(signal)),
+    const badges = node("div", "detail-flags");
+    (flags.length ? flags : [null]).forEach((signal) =>
+      badges.append(statusBadge(signal)),
     );
-    const context = node("dl", "detail-context");
-    [
-      ["Contribution", exactMoney.format(profit(order))],
-      ["Net sales", exactMoney.format(net(order))],
-      ["Region / category", `${order.region} / ${order.category}`],
-      ["Responsible team", order.owner],
-      ["Revision", String(order.revision ?? state.revision)],
-    ].forEach(([label, value]) => {
-      const item = node("div");
-      item.append(node("dt", "", label), node("dd", "", value));
-      context.append(item);
-    });
+    badges.append(node("span", "detail-status", describeStatus(order.status)));
+    identity.append(
+      node("span", "detail-kicker", "Source record"),
+      heading,
+      node("p", "detail-product", `${order.product} · ${order.quantity} units`),
+      badges,
+    );
+    const actions = node("button", "button secondary record-actions-button");
+    actions.type = "button";
+    actions.append(
+      node("span", "", "Actions for this record"),
+      node("span", "button-cue", "⋯"),
+    );
+    actions.setAttribute(
+      "aria-label",
+      `Open actions for ${order.id}: share the finding or report a data issue`,
+    );
+    bindContextTrigger(actions, () => recordSelection(order));
+    header.append(identity, actions);
+
+    // Statement: the three editable source values and the two derived lines,
+    // laid out in the order the metric definitions apply them.
     const values = node("table", "record-values");
     const caption = node(
       "caption",
@@ -910,26 +1112,34 @@
       "Select a source value to review a numeric correction in its cell",
     );
     const head = node("thead"),
-      header = node("tr");
+      headRow = node("tr");
     for (const label of ["Source field", "Current value · select to edit"]) {
       const th = node("th", "", label);
       th.scope = "col";
-      header.append(th);
+      headRow.append(th);
     }
-    head.append(header);
+    head.append(headRow);
     const body = node("tbody");
-    for (const [field, label] of [
-      ["revenue", "Revenue"],
-      ["cost", "Product cost"],
-      ["refund", "Refund"],
-    ]) {
-      const row = node("tr"),
-        cell = node("td", "source-value-cell"),
-        th = node("th", "", label);
+    const rowHeading = (operator, label, hint) => {
+      const th = node("th");
       th.scope = "row";
+      const sign = node("span", "statement-op", operator);
+      sign.setAttribute("aria-hidden", "true");
+      const copy = node("span", "statement-label");
+      copy.append(node("span", "", label));
+      if (hint) copy.append(node("span", "statement-hint", hint));
+      // A flex wrapper keeps the header a real table cell, so columns align.
+      const wrap = node("div", "statement-head");
+      wrap.append(sign, copy);
+      th.append(wrap);
+      return th;
+    };
+    const sourceRow = (field, label, operator) => {
+      const row = node("tr", "source-row"),
+        cell = node("td", "source-value-cell");
       const edit = state.inlineEdit;
       if (edit?.recordId === order.id && edit.field === field) {
-        row.className = "inline-edit-row";
+        row.className = "source-row inline-edit-row";
         cell.append(inlineEditor(edit));
       } else {
         const button = node(
@@ -958,10 +1168,68 @@
         });
         cell.append(button);
       }
-      row.append(th, cell);
-      body.append(row);
-    }
+      row.append(rowHeading(operator, label, "Source value"), cell);
+      return row;
+    };
+    const derivedRow = (label, hint, value, className) => {
+      const row = node("tr", `derived-row ${className}`),
+        cell = node("td", "derived-value-cell");
+      cell.append(node("span", "derived-value", value));
+      row.append(rowHeading("=", label, hint), cell);
+      return row;
+    };
+    const rate = margin(order);
+    body.append(
+      sourceRow("revenue", "Revenue", ""),
+      sourceRow("refund", "Refund", "−"),
+      derivedRow(
+        "Net revenue",
+        "Revenue − refund",
+        exactMoney.format(net(order)),
+        "",
+      ),
+      sourceRow("cost", "Product cost", "−"),
+      derivedRow(
+        "Contribution",
+        rate === null
+          ? "Net revenue − product cost"
+          : `Net revenue − product cost · ${(rate * 100).toFixed(1)}% margin`,
+        exactMoney.format(profit(order)),
+        `total-row${profit(order) < 0 ? " margin-negative" : ""}`,
+      ),
+    );
     values.append(caption, head, body);
+    const statement = node("section", "detail-statement");
+    statement.append(
+      node("h3", "detail-section-title", "How this order’s contribution adds up"),
+      values,
+      node(
+        "p",
+        "detail-footnote",
+        "Select a source value to propose a correction. Net revenue and contribution are recalculated from the saved values, never typed in.",
+      ),
+    );
+
+    // Context: who, where, when, and the audit evidence that carries actions.
+    const context = node("dl", "detail-context");
+    [
+      ["Region / category", `${order.region} / ${order.category}`],
+      ["Channel", order.channel],
+      ["Responsible team", order.owner],
+      ["Ordered", dateLabel(order.orderDate)],
+      ["Promised", dateLabel(order.promisedDate)],
+      [
+        "Delivered",
+        order.deliveredDate
+          ? dateLabel(order.deliveredDate)
+          : "Not delivered yet",
+      ],
+      ["Revision", String(order.revision ?? state.revision)],
+    ].forEach(([label, value]) => {
+      const item = node("div");
+      item.append(node("dt", "", label), node("dd", "", value));
+      context.append(item);
+    });
     const note = node("button", "detail-note source-context-trigger");
     note.type = "button";
     note.setAttribute(
@@ -978,20 +1246,16 @@
       ),
     );
     bindContextTrigger(note, () => recordSelection(order));
-    detail.append(
-      top,
-      heading,
-      node("p", "detail-product", `${order.product} · ${order.quantity} units`),
-      flags,
+    const side = node("section", "detail-side");
+    side.append(
+      node("h3", "detail-section-title", "Record context"),
       context,
-      values,
       note,
-      node(
-        "p",
-        "detail-footnote",
-        "Select a number to correct its source value. Select the audit evidence to report the underlying data issue.",
-      ),
     );
+
+    const layout = node("div", "detail-body");
+    layout.append(statement, side);
+    detail.append(header, layout);
     if (!visibleOrders().some((item) => item.id === order.id))
       detail.append(
         node(
@@ -1008,10 +1272,10 @@
     text(
       "#view-level",
       state.level === "overview"
-        ? "LEVEL 01 · OVERVIEW"
+        ? "Level 1 of 3 · Overview"
         : state.level === "segment"
-          ? "LEVEL 02 · SEGMENT"
-          : "LEVEL 03 · RECORD",
+          ? "Level 2 of 3 · Segment"
+          : "Level 3 of 3 · Record",
     );
     text(
       "#view-title",
@@ -1025,7 +1289,7 @@
     $("#snapshot-date").dateTime = state.asOf;
     $("#overview-view").hidden = state.level !== "overview";
     $("#segment-view").hidden = state.level !== "segment";
-    $("#metrics").hidden = state.level !== "overview";
+    $("#metrics").hidden = state.level === "record";
     $("#workspace").hidden = false;
     $("#orders-panel").hidden = state.level === "record";
     $("#global-filters").hidden = state.level === "record";
@@ -1044,7 +1308,7 @@
     const totals = metrics(orders);
     text(
       "#segment-description",
-      `${totals.count} records · ${money.format(totals.netRevenue)} net revenue · ${money.format(totals.profit)} contribution. Select a bar or a row’s ⋯ menu to act on that exact finding. Open a record to inspect its source values.`,
+      `The figures above now cover only this segment: ${totals.count} ${totals.count === 1 ? "record" : "records"}. Select a bar or a row’s ⋯ menu to act on that exact finding, or open a record to inspect its source values.`,
     );
     renderBreadcrumbs();
     renderMetrics(orders);
@@ -1061,6 +1325,10 @@
           ? "Priority review"
           : "Orders in view"
         : "Segment records",
+    );
+    text(
+      "#orders-eyebrow",
+      state.level === "overview" ? "Start here" : "Evidence behind the figures",
     );
     text(
       "#table-scope-note",
@@ -1454,7 +1722,15 @@
       ),
     );
   }
+  function setStage(stage) {
+    $("#action-form").dataset.stage = stage;
+    for (const item of $("#dialog-steps").children) {
+      if (item.dataset.step === stage) item.setAttribute("aria-current", "step");
+      else item.removeAttribute("aria-current");
+    }
+  }
   function editableStage() {
+    setStage(state.pending?.inlineChange ? "review" : "edit");
     $("#action-fields").hidden = false;
     $("#exact-preview").hidden = true;
     $("#back-to-edit").hidden = true;
@@ -1501,6 +1777,7 @@
     };
     state.pending = pending;
     $("#dialog-service").replaceChildren(serviceBadge(action));
+    text("#dialog-step-edit", inline ? "Edit in the cell" : "Edit draft");
     editableStage();
     setFormStatus("");
     const numeric = action === "supabase";
@@ -1722,6 +1999,7 @@
       pending.reviewed = reviewed;
       pending.snapshot = preview.snapshot;
       pending.fingerprint = fingerprint;
+      setStage("review");
       $("#action-fields").hidden =
         !pending.inlineChange || Boolean(state.accessPhrase);
       $("#exact-preview").hidden = false;
@@ -1953,6 +2231,17 @@
       }
     });
     window.addEventListener("resize", () => closeContext(false));
+    window.addEventListener("scroll", hideTip, { passive: true });
+    document.addEventListener("pointerdown", (event) => {
+      const settings = $("#connection-settings");
+      if (settings.open && !settings.contains(event.target))
+        settings.open = false;
+    });
+    $("#connection-settings").addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !$("#connection-settings").open) return;
+      $("#connection-settings").open = false;
+      $("#connection-settings summary").focus();
+    });
 
     $("#nav-overview").addEventListener("click", (event) => {
       event.preventDefault();
